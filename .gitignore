@@ -1,0 +1,14 @@
+# Allow-list: only the agent setup is tracked.
+# Everything else in ~/.claude (login token, chat history, sessions, caches) stays local.
+/*
+!/.gitignore
+!/README.md
+!/settings.json
+!/CLAUDE.md
+!/agents/
+!/commands/
+!/hooks/
+!/skills/
+
+# Auto-synced from claude.ai (includes Anthropic's licensed skills); not part of this setup.
+/skills/synced/
