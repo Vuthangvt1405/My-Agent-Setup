@@ -5,7 +5,7 @@ description: Maintain a Python codebase - find and remove dead code with Vulture
 
 # Maintain a Python codebase
 
-A maintenance pass in five phases: **remove dead code → verify → lock in rules → SOLID review → folder structure review**, with a **tech debt log** kept throughout. The order matters. Deleting dead code first shrinks the surface you have to reason about, so the SOLID and structure reviews are done on code that actually runs.
+A maintenance pass in five phases: **remove dead code → verify → lock in rules → SOLID review → folder structure review**, with a **tech debt log** kept throughout. The pass ends with a report and a numbered **action plan**; once the user verifies it, the approved items move to action (see "Review gate: from plan to action"). The order matters. Deleting dead code first shrinks the surface you have to reason about, so the SOLID and structure reviews are done on code that actually runs.
 
 Two principles drive everything below:
 
@@ -248,6 +248,16 @@ the reader must be able to understand and judge the item without opening the fil
 - **If left alone:** <what happens over time; say so if the answer is "nothing much">
 - **Suggested fix:** <concrete steps, not "refactor this">, effort S/M/L, anything that must be done first (e.g. add tests)
 
+## Proposed action plan (for your review)
+<every item that is recommended but NOT done: SOLID recommendations, "optimize later" moves,
+tech debt items with Status "open". One numbered row each, so the user can approve by number.
+Write "None" if nothing is left.>
+
+| # | Action | Source (TD-n / SOLID / structure) | Files touched | Effort | Risk | Needs first |
+|---|---|---|---|---|---|---|
+
+Reply with the numbers to approve (for example "approve 1, 3, 4"), "approve all", or "skip 2". Nothing in this table is done until you approve it.
+
 ## Commits
 <list of commits on branch>
 
@@ -265,7 +275,20 @@ Rules for the report:
 
 - **The tree shows the real end state.** Build it from `git diff --stat --name-status <base>...HEAD` plus the actual tree, not from memory. Every [NEW], [SPLIT], [MOVED] and [DELETED] entry must correspond to a real change on the branch, and every such change must appear in the tree.
 - **Tech debt details carry the context.** If you cannot fill in "What this code is for" or "Why it matters", you do not understand the item well enough yet: read more, or move it to Open questions.
-- **Open questions come last and are never guessed away.** See the next section.
+- **Open questions come last and are never guessed away.** See the open-questions section below.
+- **Save the report to a file as well as showing it:** `.maintenance/maintenance-report-<YYYY-MM-DD>.md` in the repo (add `.maintenance/` to `.git/info/exclude` so it is never committed), and tell the user the path. Re-save it after every action round so the statuses stay true.
+- **End with the action plan.** The report always closes the review stage with the "Proposed action plan" table, so the user can verify it and move to action (next section).
+
+## Review gate: from plan to action
+
+The pass has two stages. **Stage 1 (review)** is everything above: it changes only what is safe and clear (dead code, whitelist, small covered refactors) and ends with the report and the **Proposed action plan**. **Stage 2 (action)** starts only when the user verifies the plan.
+
+- **What counts as verification.** An explicit message from the user approving items ("approve 1 and 3", "verified, go ahead", "approve all", "do the later items"). Silence, a thumbs-up on the report, or "looks good" about the report as a whole is not approval of the risky items: ask which numbers. Approval covers only the numbers named; it does not carry over to later passes.
+- **Execute only approved rows, in the plan's order,** respecting each row's "Needs first" (for example add tests before splitting a function). One commit per row, `refactor: ...` / `refactor(structure): ...` / `test: ...`, with Phase 2 verification before each commit. If verification fails, revert that row, say why, and continue with the next approved row only if it does not depend on the failed one.
+- **Stay inside the approved scope.** If an approved action reveals new debt or needs a wider change (public API, other modules, an unexpected test dependency), stop that row, log it, and ask; do not widen the change on your own.
+- **Structure moves** (an approved "optimize later" item) follow the Phase 5 rules for "optimize now": `git mv` without content edits, update every reference, one structural change per commit, shim for externally imported paths. Before moving, re-check `git branch -r` and tell the user which branches will conflict.
+- **After the action round:** re-run Vulture and the full checks, update statuses in the Tech debt overview ("fixed in this pass"), the folder tree, the Commits list and the saved report file, then show a short summary of what was done, what failed or was skipped, and what is still open. Rows the user skipped stay in the plan as open.
+- **Never push, open a PR or merge** as part of action unless the user asked for that separately.
 
 ## Open questions (collect through every phase)
 
