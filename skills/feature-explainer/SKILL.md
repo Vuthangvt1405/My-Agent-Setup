@@ -102,6 +102,8 @@ Pick the single diagram that best explains the flow, and say why in one sentence
 
 Write it in Mermaid. Include the error branches.
 
+**Check that every diagram (including any `erDiagram`) renders before you finish.** A diagram with a syntax error shows up as an error box, not a picture. After writing the report file, run `bash <this skill's dir>/scripts/check_mermaid.sh <report file>`. It renders every ```` ```mermaid ```` block with the Mermaid CLI and prints `OK`/`FAIL` with the block's line. Fix each `FAIL` and re-run until all pass. Common causes: unquoted labels with `()`, `:`, `/`, `{}` or `"` (wrap them as `A["label (x)"]`), `end` used as a node name, `alt`/`opt`/`loop` without a matching `end`, and arrows with a missing message (`A->>B: msg`). If the check cannot run (no Node/network), say so in the report instead of claiming the diagram was verified.
+
 ## Step 4 — DTOs: request and response
 
 For every request and response DTO in the flow, give a **realistic example JSON** (realistic values, not "string"), then a field table:

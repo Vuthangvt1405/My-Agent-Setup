@@ -186,6 +186,8 @@ Choose **exactly one** diagram, the one that best explains how the feature runs,
 
 Write it in Mermaid. Include the main error branches and the security checks from Step 5 (authentication, rate limiting, ownership), not only the happy path.
 
+**Check that every diagram (including any `erDiagram`) renders before you finish.** A diagram with a syntax error shows up as an error box, not a picture. After writing the report file, run `bash <this skill's dir>/scripts/check_mermaid.sh <report file>`. It renders every ```` ```mermaid ```` block with the Mermaid CLI and prints `OK`/`FAIL` with the block's line. Fix each `FAIL` and re-run until all pass. Common causes: unquoted labels with `()`, `:`, `/`, `{}` or `"` (wrap them as `A["label (x)"]`), `end` used as a node name, `alt`/`opt`/`loop` without a matching `end`, and arrows with a missing message (`A->>B: msg`). If the check cannot run (no Node/network), say so in the report instead of claiming the diagram was verified.
+
 ## Step 7 — TDD test plan (positive baseline + all negative cases)
 
 Tests are written **first** when implementation starts (Red → Green → Refactor). In plan mode you only *describe* them. List groups in the order they should be written: start with the simplest test that forces the core behavior to exist, then add the rules one by one.
