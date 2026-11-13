@@ -34,6 +34,7 @@ Only track clean, reusable configuration:
 - `skills/*` (custom skills)
 - `settings.json` (global user preferences, with tokens omitted)
 - `README.md` and `.gitignore`
+- `CLAUDE.md` (global coding rules and instructions)
 
 ---
 
@@ -70,12 +71,15 @@ Stage only the clean configuration files:
 git -C "$HOME/.claude" add skills/<skill-name>
 # If settings.json was modified:
 git -C "$HOME/.claude" add settings.json
+# If CLAUDE.md was modified:
+git -C "$HOME/.claude" add CLAUDE.md
 ```
 
 Commit using the Conventional Commits format:
 - New skill: `feat(skills): add <skill-name> skill`
 - Updated skill: `feat(skills): update <skill-name> skill (<short summary of change>)`
 - Settings change: `chore(config): update settings.json (<setting name>)`
+- CLAUDE.md change: `docs(config): update CLAUDE.md (<short summary of change>)`
 
 ### 5. Pull & Rebase (Linear History)
 Ensure no remote changes collide before pushing:
