@@ -5,6 +5,12 @@
     "sessionUrl": false
   },
   "model": "opus",
+  "permissions": {
+    "ask": [
+      "Read(**/*.md)",
+      "Read(//**/*.md)"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {

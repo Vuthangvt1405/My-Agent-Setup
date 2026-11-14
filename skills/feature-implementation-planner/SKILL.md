@@ -51,6 +51,27 @@ Steps 1–8 run in **plan mode**. Its only output is the plan file (see "Plan fi
 - Running migrations, seeders, `INSERT`/`UPDATE`/`DELETE`/`ALTER`, or any write to a database
 - Installing packages, running generators/scaffolding, formatters that rewrite files, `git commit`/`checkout`/`stash`/`push`
 - Writing production code or test code into files. Test names and short illustrative snippets inside the plan text are fine.
+- **Changing anything outside this one story without asking first.** That includes:
+  - editing the story / ticket file (its ACs, notes, points)
+  - creating a new story or ticket
+  - adding items to a backlog or sprint file
+  - editing another story, another epic, or the epic PRD
+
+### Scope: one story, one plan file
+
+The plan is about **the one story the user asked for**. Everything it decides lives in the plan file.
+
+**When an answer changes the story itself** (e.g. a new AC, a new rule, a different estimate):
+- write the change into the plan: §1 as a *Proposed AC*, plus the `## Decision log`
+- then ask: **"Shall I also update the story file?"**
+- edit the story file only on an explicit yes
+
+**When something belongs to a different topic or a later sprint:**
+- note it in the plan's Step 8 as *Out of scope — follow-up*, with one line on why
+- ask whether to create a story or backlog item for it
+- don't write that story or backlog entry yourself
+
+A question about scope, or a "yes" to a plan decision, is not permission to touch other files. Approval covers only the file it was given for.
 
 Planned changes (new tables, columns, migrations, files) are **described** in the plan, never applied. If a tool or instruction would modify something, stop and list it under Step 8 instead. Plan mode ends after Step 8. The only way out is the user explicitly approving the plan; then Step 9 (scaffold) may create files, within its own strict limits.
 
@@ -251,11 +272,23 @@ End with two coverage tables, so gaps are visible:
 
 End with a numbered list of everything the user needs to decide or confirm, split into two groups:
 - **Questions**: genuine unknowns, such as business rules, edge cases, data ownership, security trade-offs (e.g. detailed error codes vs. hiding what exists), or what to do with existing data during a migration.
-- **Assumptions to confirm**: choices you made so the plan could proceed. Give your default for each, so the user can just say "yes".
+- **Assumptions to confirm**: choices you made so the plan could proceed, so the user can just say "yes". Every assumption must have these three parts, each as its own labelled line:
+  - **Context:** the situation in the code or requirement that forced a choice, with file:line evidence where it exists (what exists today, what constraint applies).
+  - **Decision:** the default you chose, stated concretely (names, values, limits), plus the realistic alternative and what would change if the user picks it.
+  - **Why:** the reason this default beats the alternative (the risk it avoids, the rule it follows, the cost it saves).
+
+  Example:
+  ```
+  **A3 — Ids look like `file-iris-csv`.**
+  - *Context:* ids must match `^[a-z0-9][a-z0-9-]{0,79}$` (`datasets_store.py:35`), so a file name like `Iris.csv` can't be an id.
+  - *Decision:* `file-` + a slug of the path, `-2`, `-3` on clashes. Alternative: a random id (`file-7f3a9c`).
+  - *Why:* the prefix can't clash with catalog ids, so the existing Delete action works unchanged, and a readable id helps in logs.
+  ```
+  Questions get the same three parts when they need background (context, your suggested default, why).
 
 Finish the plan file with one line confirming that no files or data were changed other than the plan file. Write the file, reply in chat as described in "Plan file", then stop and wait for answers.
 
-When the user answers, update the plan file in place with their decisions and add them to `## Decision log` (question → answer → what changed in the plan). In chat, show only what changed. Then ask: **"Plan approved — shall I create the scaffold?"** Go to Step 9 only on an explicit yes. Answering the questions is not approval by itself.
+When the user answers, update **only the plan file** in place with their decisions and add them to `## Decision log` (question → answer → what changed in the plan). If an answer also implies a change to the story file, or a new story or backlog item, don't make it: list it in chat and ask first (see "Scope: one story, one plan file"). In chat, show only what changed. Then ask: **"Plan approved — shall I create the scaffold?"** Go to Step 9 only on an explicit yes. Answering the questions is not approval by itself.
 
 ## Step 9 — Scaffold only (after approval, no business logic)
 
