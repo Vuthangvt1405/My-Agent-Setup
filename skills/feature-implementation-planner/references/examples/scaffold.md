@@ -1,6 +1,6 @@
 # Example scaffold (Step 9)
 
-This continues the "Apply Coupon to Order" plan in `example-output.md`, after the user approved it.
+This continues the "Apply Coupon to Order" plan in `plan-1-3-understand.md` … `plan-8-questions.md`, after the user approved it.
 
 ---
 
