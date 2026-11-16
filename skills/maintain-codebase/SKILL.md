@@ -12,6 +12,20 @@ Two principles drive everything below:
 1. **Vulture's output is a list of suspects, not a verdict.** It matches names across the files you give it and ignores scope, so dynamic Python (`getattr`, framework hooks, entry points, plugins, templates) produces false positives. Every finding below 100% confidence needs evidence before deletion.
 2. **Behaviour must not change.** This is maintenance. Each change is small, verified, and revertible. If you cannot verify a change, do not make it silently; report it.
 
+## Scripts: run these, do not improvise
+
+The mechanical steps are scripted so every pass runs them the same way. **Always use the script for its step**; do not write your own Vulture, grep, test or folder commands for these steps, and do not hand-edit the report's layout. Your job is the judgement the scripts leave open: classifying findings, deciding what to remove or refactor, writing the report's content. Run every script from the repository root. `<skill>` is this skill's folder; run `verify.py` with the project's own Python (for example `.venv/bin/python`) so it finds the project's tools.
+
+| Step | Command | What it does | What you do with the output |
+|---|---|---|---|
+| Phase 0 baseline | `<python> <skill>/scripts/verify.py baseline` | runs compileall, import smoke test, ruff, mypy (if configured), vulture, pytest; saves `.maintenance/baseline.json` | copy its table into the report's Verification section |
+| Phase 1 scan + evidence | `<python> <skill>/scripts/find_dead_code.py [--min-confidence 60]` | runs Vulture with `[tool.vulture]`, greps the whole repo (`git grep`, all file types) for every name, flags decorators, dunders, dynamic access, re-exports | fill in the Classification column of `.maintenance/triage.md`; read the code only for rows the evidence leaves unclear |
+| Phase 2 verify (after every batch) | `<python> <skill>/scripts/verify.py compare` | same checks, compared with the baseline; exit 1 and `REGRESSION:` lines on any new failure, new ruff issue, more vulture findings or fewer passing tests | exit 1 → revert the batch (Phase 2 rules); exit 0 → commit |
+| Phase 5 size limits | `<python> <skill>/scripts/folder_sizes.py <package_root> ...` | measures width, Rule of Three and depth for every folder | copy the findings into the report's Folder structure section |
+| Report | `<python> <skill>/scripts/report.py init` · `set-section "<Heading>" < body.md` · `check` | `init` reuses the newest report (or creates one from the fixed template, and excludes `.maintenance/` from git); `set-section` replaces one section in place, and puts any new section above Open questions; `check` fails if a section is missing, out of order, or Open questions is not last | write each section's body, then `set-section` it; run `check` before showing the report |
+
+Settings for `verify.py` go in `.maintenance/checks.toml` (`packages`, `pytest_args`); set `pytest_args = ["-q", "-m", "not docker"]` only when the user agrees to skip a slow suite, and say so in the report. If a script fails or does not fit the project, stop and tell the user. Do not work around it silently.
+
 ## Tech debt log (runs through every phase)
 
 You read a large part of the codebase during this pass: triaging Vulture findings, grepping for usages, reviewing classes. Use that reading. Whenever you notice tech debt, **write it down immediately** in a running log (a scratch file such as `.maintenance/tech-debt.md`, not committed unless the user wants it) with the location, what the problem is, and what it costs. Notes taken at the moment are accurate; a list reconstructed from memory at the end is not.
@@ -27,12 +41,14 @@ Before touching anything:
 - **Git state.** Run `git status`. If the tree is dirty, tell the user and ask whether to continue (their uncommitted work would get mixed into your changes). Work on a new branch such as `chore/maintain-codebase` unless the user says otherwise.
 - **Project shape.** Read `pyproject.toml` / `setup.cfg` / `setup.py` to learn: source paths (`src/`, package dirs), test paths, how tools are run (`uv run`, `poetry run`, `hatch run`, plain venv), declared entry points and plugins (`[project.scripts]`, `[project.entry-points]`), and whether this is a **library** (public API consumed by others) or an **application**. For a library, anything exported publicly is used by definition even if nothing in the repo calls it.
 - **Frameworks.** Note Django, FastAPI/Flask, Celery, Click/Typer, pytest, Pydantic, SQLAlchemy, etc. Each one calls code implicitly. See `references/vulture.md` for the per-framework list.
-- **Baseline.** Run the project's existing checks and record the results *before* any change: test suite, linter (ruff/flake8), type checker (mypy/pyright) if configured. Pre-existing failures are not yours to fix, but you need to know them so you can tell a regression from old breakage. If there are no tests at all, say so now: verification will be weaker and you should be more conservative in Phase 1.
+- **Baseline.** Run `scripts/verify.py baseline` (see Scripts) to record the project's checks *before* any change: test suite, linter (ruff/flake8), type checker (mypy/pyright) if configured. Pre-existing failures are not yours to fix, but you need to know them so you can tell a regression from old breakage. If there are no tests at all, say so now: verification will be weaker and you should be more conservative in Phase 1.
 - **Install Vulture** if missing, using the project's own tool runner as a dev dependency (`uv add --dev vulture`, `poetry add --group dev vulture`, or `pip install vulture`). Reuse any existing `[tool.vulture]` config and whitelist.
 
 ## Phase 1 - Find and remove dead code
 
 ### 1. Scan
+
+Run `scripts/find_dead_code.py` (see Scripts). It does the scan below and the evidence search in step 2, and writes `.maintenance/triage.md`. The command it runs is:
 
 Scan source **and tests together** so code exercised only by tests is not flagged for deletion:
 
@@ -86,7 +102,7 @@ Deleting code exposes more dead code (helpers of the deleted function). Re-run V
 
 ## Phase 2 - Verify nothing broke
 
-Run after every batch, cheapest check first:
+Run `scripts/verify.py compare` after every batch (see Scripts). It runs these checks, cheapest first:
 
 1. `python -m compileall -q <src_paths>` - syntax.
 2. Import smoke test - import the top-level package(s) and CLI entry points (`python -c "import mypkg"`, `mypkg --help`). Catches removed names that are imported elsewhere.
@@ -146,7 +162,7 @@ How to apply it:
 Decide whether the folder/package tree should be reorganised, and if so, **whether now is the right time**. Moving files is the most disruptive kind of refactor: it touches every import, conflicts with every open branch, and can break things tests do not cover (config paths, Docker, CI, dotted-path strings). So the output of this phase is a reasoned decision, and a move happens only when the decision supports it. Details, smells and the checklist are in `references/structure-and-debt.md`.
 
 1. **Map the tree.** List the packages and modules (`tree -d -I ".venv|__pycache__|node_modules|.git"` or `find`), with file counts and sizes. Note what each top-level folder is for.
-2. **Measure against the size limits** (commands and details in `references/structure-and-debt.md`, "Size limits"):
+2. **Measure against the size limits** with `scripts/folder_sizes.py <package_root>` (details in `references/structure-and-debt.md`, "Size limits"):
    - **Width (7 ± 2):** 5-9 entries per folder; over ~10-12 is a finding.
    - **Rule of Three:** a subfolder needs at least 3 files sharing a distinct responsibility. Never create one for 1-2 files; fold such a subfolder back into its parent.
    - **Depth cap:** at most 3-4 levels below the root package.
@@ -267,6 +283,9 @@ Write "None" if nothing is left.>
 
 Reply with the numbers to approve (for example "approve 1, 3, 4"), "approve all", or "skip 2". Nothing in this table is done until you approve it.
 
+## Action rounds
+<one short entry per action round: what was approved, what was done or skipped, verification. "None yet" before the first round.>
+
 ## Commits
 <list of commits on branch>
 
@@ -284,8 +303,9 @@ Rules for the report:
 
 - **The tree shows the real end state.** Build it from `git diff --stat --name-status <base>...HEAD` plus the actual tree, not from memory. Every [NEW], [SPLIT], [MOVED] and [DELETED] entry must correspond to a real change on the branch, and every such change must appear in the tree.
 - **Tech debt details carry the context.** If you cannot fill in "What this code is for" or "Why it matters", you do not understand the item well enough yet: read more, or move it to Open questions.
-- **Open questions come last and are never guessed away.** See the open-questions section below.
-- **Save the report to a file as well as showing it:** `.maintenance/maintenance-report-<YYYY-MM-DD>.md` in the repo (add `.maintenance/` to `.git/info/exclude` so it is never committed), and tell the user the path. Re-save it after every action round so the statuses stay true.
+- **Open questions come last and are never guessed away.** See the open-questions section below. Nothing may follow the Open questions section, ever: when you add a section later (an action round, a note), insert it above Open questions.
+- **Save the report to a file as well as showing it:** create it with `scripts/report.py init` (`.maintenance/maintenance-report-<YYYY-MM-DD>.md`, with `.maintenance/` excluded from git), fill each section with `report.py set-section`, run `report.py check` before showing it, and tell the user the path.
+- **Always update the newest report in place.** Before writing, check `.maintenance/` for existing reports. If one exists for the current branch, edit the newest one; never start a second report for the same pass and never append updates to the end of the file. After every action round or answered question, rewrite the affected sections so they show the current state: statuses in the action plan and the tech debt overview, the folder tree, Verification, Commits, and a short entry under "Action rounds" (placed after "Proposed action plan", before "Commits"). Move answered questions to an "Answered" list at the top of Open questions, with the answer and what was done; keep unanswered and new questions below it.
 - **End with the action plan.** The report always closes the review stage with the "Proposed action plan" table, so the user can verify it and move to action (next section).
 
 ## Review gate: from plan to action
@@ -296,7 +316,7 @@ The pass has two stages. **Stage 1 (review)** is everything above: it changes on
 - **Execute only approved rows, in the plan's order,** respecting each row's "Needs first" (for example add tests before splitting a function). One commit per row, `refactor: ...` / `refactor(structure): ...` / `test: ...`, with Phase 2 verification before each commit. If verification fails, revert that row, say why, and continue with the next approved row only if it does not depend on the failed one.
 - **Stay inside the approved scope.** If an approved action reveals new debt or needs a wider change (public API, other modules, an unexpected test dependency), stop that row, log it, and ask; do not widen the change on your own.
 - **Structure moves** (an approved "optimize later" item) follow the Phase 5 rules for "optimize now": `git mv` without content edits, update every reference, one structural change per commit, shim for externally imported paths. Before moving, re-check `git branch -r` and tell the user which branches will conflict.
-- **After the action round:** re-run Vulture and the full checks, update statuses in the Tech debt overview ("fixed in this pass"), the folder tree, the Commits list and the saved report file, then show a short summary of what was done, what failed or was skipped, and what is still open. Rows the user skipped stay in the plan as open.
+- **After the action round:** re-run Vulture and the full checks, update the newest report file in place (statuses in the action plan and Tech debt overview, the folder tree, Verification, Commits, an "Action rounds" entry, and Open questions still last), then show a short summary of what was done, what failed or was skipped, and what is still open. Rows the user skipped stay in the plan as open.
 - **Never push, open a PR or merge** as part of action unless the user asked for that separately.
 
 ## Open questions (collect through every phase)
