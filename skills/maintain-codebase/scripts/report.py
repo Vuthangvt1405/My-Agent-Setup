@@ -1,13 +1,14 @@
-"""Create and update the maintenance report with a fixed layout: Open questions always last.
+"""Create and update the maintenance report with a fixed layout: what the user must reply to comes first.
 
     python <skill>/scripts/report.py init [--new-pass]        # reuse the newest report, or create one from the template
     python <skill>/scripts/report.py path                     # print the newest report's path
     python <skill>/scripts/report.py set-section "<Heading>" < body.md   # replace one "## <Heading>" section in place
-    python <skill>/scripts/report.py check                    # exit 1 if a section is missing, out of order, or not last
+    python <skill>/scripts/report.py check                    # exit 1 on any layout problem
 
 "init" never starts a second report while one exists; --new-pass is only for a new, separate maintenance pass.
-"set-section" replaces the section's body (everything up to the next "## " heading). A heading not in the
-template is inserted just above "Open questions", so nothing can ever end up after it.
+"set-section" replaces the section's body (everything up to the next "## " heading). A section that is not
+in the report yet is inserted at its fixed position. An empty body removes an optional section, so a report
+only contains sections that have something to say. Headings may carry a suffix: "SOLID review (scope: core)".
 """
 
 from __future__ import annotations
@@ -22,25 +23,27 @@ MAINTENANCE_DIR = Path(".maintenance")
 REPORT_GLOB = "maintenance-report-*.md"
 GIT_EXCLUDE_PATH = Path(".git/info/exclude")
 SECTION_PREFIX = "## "
-LAST_SECTION = "Open questions"
-REQUIRED_SECTIONS = [
+REPLY_SECTION = "Needs your reply"
+SECTION_ORDER = [
     "Summary",
-    "What changed: folder tree after maintenance",
-    "Dead code removed",
-    "Kept (false positives - whitelisted)",
-    "Needs your decision (uncertain / test-only)",
+    REPLY_SECTION,
+    "What changed",
+    "Dead code",
     "Verification",
     "Maintenance rules added",
     "SOLID review",
     "Folder structure",
-    "Tech debt found",
-    "Proposed action plan (for your review)",
+    "Tech debt",
     "Action rounds",
     "Commits",
-    LAST_SECTION,
 ]
+REQUIRED_SECTIONS = ["Summary", REPLY_SECTION, "What changed", "Verification", "Commits"]
+REPLY_SUBSECTIONS = ["### Decide", "### Approve", "### Answer"]
+MAX_TABLE_COLUMNS = 6
 PLACEHOLDER = "_Not filled in yet._"
-OPEN_QUESTIONS_TEMPLATE = "### Answered\nNone yet.\n\n### Still open\nNone."
+REPLY_TEMPLATE = "\n\n".join(f"{subsection}\nNone." for subsection in REPLY_SUBSECTIONS)
+
+Section = tuple[str, str]  # (heading text after "## ", body)
 
 
 def main() -> int:
@@ -108,8 +111,9 @@ def project_name() -> str:
 
 
 def render_template(project: str) -> str:
+    """Only the required sections; optional ones appear when 'set-section' gives them content."""
     sections = [
-        f"{SECTION_PREFIX}{heading}\n{OPEN_QUESTIONS_TEMPLATE if heading == LAST_SECTION else PLACEHOLDER}\n"
+        f"{SECTION_PREFIX}{heading}\n{REPLY_TEMPLATE if heading == REPLY_SECTION else PLACEHOLDER}\n"
         for heading in REQUIRED_SECTIONS
     ]
     return f"# Maintenance report: {project}\n\n" + "\n".join(sections)
@@ -123,7 +127,7 @@ def write_report(report_path: Path, text: str) -> None:
     report_path.write_text(text.rstrip("\n") + "\n", encoding="utf-8")
 
 
-def split_sections(text: str) -> tuple[str, list[tuple[str, str]]]:
+def split_sections(text: str) -> tuple[str, list[Section]]:
     """(title block, [(heading, body)]) where heading is the text after '## '."""
     title, *chunks = text.split(f"\n{SECTION_PREFIX}")
     sections = []
@@ -133,38 +137,74 @@ def split_sections(text: str) -> tuple[str, list[tuple[str, str]]]:
     return title, sections
 
 
-def join_sections(title: str, sections: list[tuple[str, str]]) -> str:
+def join_sections(title: str, sections: list[Section]) -> str:
     return title.rstrip("\n") + "\n\n" + "\n".join(f"{SECTION_PREFIX}{heading}\n{body.strip(chr(10))}\n" for heading, body in sections)
+
+
+def canonical_name(heading: str) -> str:
+    """'SOLID review (scope: core)' -> 'SOLID review'. A heading outside the fixed layout is its own name."""
+    return next((name for name in SECTION_ORDER if heading.startswith(name)), heading)
+
+
+def layout_rank(heading: str) -> int:
+    """Position in the fixed layout. Headings outside the layout sort after every known section."""
+    name = canonical_name(heading)
+    return SECTION_ORDER.index(name) if name in SECTION_ORDER else len(SECTION_ORDER)
+
+
+def find_section(sections: list[Section], heading: str) -> int | None:
+    wanted = canonical_name(heading)
+    return next((index for index, (name, _) in enumerate(sections) if canonical_name(name) == wanted), None)
 
 
 def replace_section(text: str, heading: str, new_body: str) -> str:
     title, sections = split_sections(text)
     index = find_section(sections, heading)
-    if index is not None:
-        sections[index] = (sections[index][0], new_body)
-    else:
-        open_questions_index = find_section(sections, LAST_SECTION)
-        insert_at = len(sections) if open_questions_index is None else open_questions_index
-        sections.insert(insert_at, (heading, new_body))
+    is_empty = not new_body.strip()
+    if is_empty and canonical_name(heading) in REQUIRED_SECTIONS:
+        sys.exit(f"'{heading}' is a required section and cannot be empty")
+    if index is not None and is_empty:
+        del sections[index]
+    elif index is not None:
+        sections[index] = (heading, new_body)
+    elif not is_empty:
+        later_sections = (position for position, (name, _) in enumerate(sections) if layout_rank(name) > layout_rank(heading))
+        sections.insert(next(later_sections, len(sections)), (heading, new_body))
     return join_sections(title, sections)
-
-
-def find_section(sections: list[tuple[str, str]], heading: str) -> int | None:
-    """Matches on the start of the heading, so 'SOLID review' finds 'SOLID review (scope: ...)'."""
-    return next((index for index, (name, _) in enumerate(sections) if name.startswith(heading)), None)
 
 
 def layout_problems(text: str) -> list[str]:
     _, sections = split_sections(text)
     problems = [f"missing section: {heading}" for heading in REQUIRED_SECTIONS if find_section(sections, heading) is None]
-    positions = [find_section(sections, heading) for heading in REQUIRED_SECTIONS]
-    found_positions = [position for position in positions if position is not None]
-    if found_positions != sorted(found_positions):
-        problems.append("required sections are out of order")
-    is_open_questions_last = bool(sections) and sections[-1][0].startswith(LAST_SECTION)
-    if not is_open_questions_last:
-        problems.append(f"'{LAST_SECTION}' must be the last section")
+    ranks = [layout_rank(name) for name, _ in sections]
+    if ranks != sorted(ranks):
+        problems.append(f"sections are out of order; the fixed order is: {', '.join(SECTION_ORDER)}")
+    reply_index = find_section(sections, REPLY_SECTION)
+    if reply_index is not None:
+        if reply_index != 1:
+            problems.append(f"'{REPLY_SECTION}' must be the second section, directly after Summary")
+        reply_body = sections[reply_index][1]
+        problems += [f"'{REPLY_SECTION}' lacks '{subsection}' (write 'None.' under it if empty)" for subsection in REPLY_SUBSECTIONS if subsection not in reply_body]
+    for name, body in sections:
+        if PLACEHOLDER in body:
+            problems.append(f"section not filled in: {name}")
+        widest = widest_table(body)
+        if widest > MAX_TABLE_COLUMNS:
+            problems.append(f"table with {widest} columns in '{name}' (max {MAX_TABLE_COLUMNS}); move detail below the table")
     return problems
+
+
+def widest_table(body: str) -> int:
+    """Largest column count of any markdown table row outside code fences."""
+    widest = 0
+    is_in_code_fence = False
+    for line in body.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            is_in_code_fence = not is_in_code_fence
+        elif not is_in_code_fence and stripped.startswith("|") and stripped.endswith("|"):
+            widest = max(widest, stripped.replace("\\|", "").count("|") - 1)
+    return widest
 
 
 def print_layout_problems(problems: list[str]) -> int:

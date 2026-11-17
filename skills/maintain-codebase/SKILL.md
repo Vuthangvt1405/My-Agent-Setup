@@ -5,7 +5,7 @@ description: Maintain a Python codebase - find and remove dead code with Vulture
 
 # Maintain a Python codebase
 
-A maintenance pass in five phases: **remove dead code → verify → lock in rules → SOLID review → folder structure review**, with a **tech debt log** kept throughout. The pass ends with a report and a numbered **action plan**; once the user verifies it, the approved items move to action (see "Review gate: from plan to action"). The order matters. Deleting dead code first shrinks the surface you have to reason about, so the SOLID and structure reviews are done on code that actually runs.
+A maintenance pass in five phases: **remove dead code → verify → lock in rules → SOLID review → folder structure review**, with a **tech debt log** kept throughout. The pass ends with a report whose first screen lists everything the user must reply to, each item with an ID; once the user approves items by ID, they move to action (see "Review gate: from plan to action"). The order matters. Deleting dead code first shrinks the surface you have to reason about, so the SOLID and structure reviews are done on code that actually runs.
 
 Two principles drive everything below:
 
@@ -22,7 +22,7 @@ The mechanical steps are scripted so every pass runs them the same way. **Always
 | Phase 1 scan + evidence | `<python> <skill>/scripts/find_dead_code.py [--min-confidence 60]` | runs Vulture with `[tool.vulture]`, greps the whole repo (`git grep`, all file types) for every name, flags decorators, dunders, dynamic access, re-exports | fill in the Classification column of `.maintenance/triage.md`; read the code only for rows the evidence leaves unclear |
 | Phase 2 verify (after every batch) | `<python> <skill>/scripts/verify.py compare` | same checks, compared with the baseline; exit 1 and `REGRESSION:` lines on any new failure, new ruff issue, more vulture findings or fewer passing tests | exit 1 → revert the batch (Phase 2 rules); exit 0 → commit |
 | Phase 5 size limits | `<python> <skill>/scripts/folder_sizes.py <package_root> ...` | measures width, Rule of Three and depth for every folder | copy the findings into the report's Folder structure section |
-| Report | `<python> <skill>/scripts/report.py init` · `set-section "<Heading>" < body.md` · `check` | `init` reuses the newest report (or creates one from the fixed template, and excludes `.maintenance/` from git); `set-section` replaces one section in place, and puts any new section above Open questions; `check` fails if a section is missing, out of order, or Open questions is not last | write each section's body, then `set-section` it; run `check` before showing the report |
+| Report | `<python> <skill>/scripts/report.py init` · `set-section "<Heading>" < body.md` · `check` | `init` reuses the newest report (or creates one with the required sections, and excludes `.maintenance/` from git); `set-section` replaces one section in place, inserts a new one at its fixed position, and removes an optional one when given an empty body; `check` fails if a required section is missing or unfilled, sections are out of order, Needs your reply is not second, or a table has more than 6 columns | write each section's body, then `set-section` it; run `check` before showing the report |
 
 Settings for `verify.py` go in `.maintenance/checks.toml` (`packages`, `pytest_args`); set `pytest_args = ["-q", "-m", "not docker"]` only when the user agrees to skip a slow suite, and say so in the report. If a script fails or does not fit the project, stop and tell the user. Do not work around it silently.
 
@@ -176,7 +176,7 @@ Decide whether the folder/package tree should be reorganised, and if so, **wheth
    | Verdict | When | What you do |
    |---|---|---|
    | **Optimize now** | Clear benefit, low cost: few files, internal modules only, mechanical import updates, covered by tests, no public path changes | Do it in this pass (rules below). |
-   | **Optimize later** | Clear benefit but high cost or risk right now: many files, public API paths, weak tests, active branches that would conflict, a release in progress | Do not move anything. Write a step-by-step migration plan in the report and add it to the tech debt log. |
+   | **Optimize later** | Clear benefit but high cost or risk right now: many files, public API paths, weak tests, active branches that would conflict, a release in progress | Do not move anything. Write a step-by-step migration plan in the report's Folder structure section as an `F-n` item. |
    | **Leave as is** | Benefit is cosmetic or a matter of taste; the current layout is consistent and people can find things | Say so and why. A stable, familiar layout has value. |
 
    If benefit and cost are both high, the verdict is *later*, and the user decides. Never start a large restructuring unasked.
@@ -190,15 +190,63 @@ Decide whether the folder/package tree should be reorganised, and if so, **wheth
 
 ## Final report
 
-End with the report below. Use the real numbers. The reader was not watching you work and may not know the code well, so every section must be understandable on its own: say what the thing is, not just where it is.
+End with the report below. Use the real numbers. The reader is a developer who was not watching you work: they want to know what changed, whether it is safe, and what they have to answer, in that order of urgency. Keep it short enough to read in one sitting.
+
+**Layout rules (enforced by `report.py check`):**
+
+- **Summary, then Needs your reply, then everything else.** The user must be able to act after reading the first screen.
+- **Only sections with content.** Summary, Needs your reply, What changed, Verification and Commits are always present. Every other section appears only when it has something to say; name the skipped ones in the Summary's "Nothing to report" line. Never write a section that says only "None".
+- **Tables have at most 6 columns** and short cells. Longer explanation goes in a bullet under the table, keyed by ID.
+
+**One ID per item, one home per item:**
+
+| Prefix | Item | Home section (the only place it is described) |
+|---|---|---|
+| `D-n` | dead-code finding that needs a decision | Needs your reply → Decide |
+| `S-n` | SOLID refactor recommended, not done | SOLID review → Recommended |
+| `F-n` | structure change with verdict "later" | Folder structure |
+| `TD-n` | tech debt item | Tech debt |
+| `Q-n` | open question | Needs your reply → Answer |
+
+Describe an item once, in its home section. Everywhere else, refer to it by ID and do not repeat its text. The user replies with IDs ("approve S-2 TD-1, D-3 keep, Q-1: yes"). IDs never change and are never reused within a pass.
 
 ````markdown
 # Maintenance report: <project>
 
 ## Summary
-<2-3 sentences: what was done, net lines removed, overall health>
+<2-3 sentences: what was done and the overall health. Secrets found in code go here, first.>
 
-## What changed: folder tree after maintenance
+- **Removed:** <N> items, <-L> lines, in <C> commits
+- **Checks:** all green vs baseline / <N> regressions reverted (see Verification)
+- **Waiting on you:** <N> decisions, <N> approvals, <N> questions (next section)
+- **Nothing to report:** <sections left out, e.g. "SOLID review, Folder structure">
+
+## Needs your reply
+Reply with IDs, for example: `approve S-2 TD-1`, `D-3 keep`, `Q-1: yes, other repos import it`.
+Nothing under Approve is done until you approve it.
+
+### Decide
+<uncertain or test-only dead code. "None." if empty.>
+
+| ID | Item | What it does | If removed | If kept |
+|---|---|---|---|---|
+| D-1 | `export_csv()` `shop/reports.py:88` | builds the monthly CSV export | export button breaks if a template still calls it | 40 unused lines stay |
+
+### Approve
+<every S-n, F-n and open TD-n you recommend acting on, best value first. "None." if empty.>
+
+| ID | Action | Files | Effort · Risk | Needs first |
+|---|---|---|---|---|
+| TD-1 | catch `WarehouseApiError` instead of bare `except` in `sync_inventory` | 1 | S · low | - |
+| S-2 | inject `OrderRepository` into `OrderService` | 3 | M · low | tests for `OrderService` |
+
+### Answer
+<things you could not decide from the code. "None." if empty.>
+
+- **Q-1: <the question, answerable in a sentence>**
+  Seen at: <file, finding or phase>. Meanwhile I: <safe default taken>. A → <what happens>; B → <what happens>.
+
+## What changed
 <the tree as it is now, on the branch. Show every folder that contains a change in full;
 collapse untouched folders to one line with a file count. Mark every affected file:>
 
@@ -220,111 +268,98 @@ pyproject.toml                [MODIFIED]  added [tool.vulture]
 
 Legend: [NEW] created · [SPLIT] created by splitting a larger file · [MOVED] same content, new path · [MODIFIED] edited in place · [DELETED] removed
 
-### Files split into smaller files
-| Original file (lines) | New files (lines) | What each new file holds | Why it was split |
+<The note after each marker says where the content came from and why. If a structure change is
+proposed but NOT done, add a second tree titled "Proposed tree (not applied)" for that F-n only.>
 
-### New files created
-| File | Purpose | Where its content came from (extracted from X / written new) |
+## Dead code
+### Removed
+<one row per commit, not per item. The commit holds the full list; name the items that matter.>
 
-<If structure changes are proposed but NOT done, add a second tree titled
-"Proposed tree (not applied)" with the same markers, so the user sees the target before approving.>
+| Commit | Files | Removed | Evidence it was unused |
+|---|---|---|---|
+| `a1b2c3d` | `shop/orders/service.py` | 3 methods, 2 imports (`recalc_totals`, ...) | no match in repo outside the definitions; tests green |
 
-## Dead code removed
-| File | Item | Type | Confidence | Evidence it was unused |
-
-## Kept (false positives - whitelisted)
+### Kept (whitelisted)
 | Item | Why it is actually used |
-
-## Needs your decision (uncertain / test-only)
-| # | Item | What it does, in app terms | What the user sees today | Choices and what each changes |
-<number rows D1, D2, ... so the user can answer by number ("D3 keep, D4 yes")>
+|---|---|
 
 ## Verification
 | Check | Baseline | After |
-(compile, imports, lint, types, tests - with counts; note pre-existing failures)
+|---|---|---|
+(the table printed by `verify.py`; note pre-existing failures and any skipped suite)
 
 ## Maintenance rules added
-<whitelist, pyproject config, hooks/CI - or "none, offered: ...">
+<whitelist, pyproject config, hooks/CI, and what was offered but not added>
 
 ## SOLID review (scope: <scope>)
 ### Fixed
-| Location | Principle | Problem | Change made |
+| Location | Principle | Problem | Change made | Commit |
+|---|---|---|---|---|
+
 ### Recommended (not done)
-| Location | Principle | Problem | Proposed refactor | Risk/effort |
+| ID | Location | Principle | Problem | Proposed refactor |
+|---|---|---|---|---|
 
 ## Folder structure (verdict: optimize now / optimize later / leave as is)
 Size limits: <folders over ~10-12 entries, with counts> · <subfolders with 1-2 files> · <deepest path and its depth>, or "all within limits"
-| Problem found | Proposed change | Benefit (readability, maintainability) | Cost (files, imports, risk) | Verdict |
-<for "later": the migration plan in ordered steps>
 
-## Tech debt found
+| ID | Problem found | Proposed change | Benefit | Cost | Verdict |
+|---|---|---|---|---|---|
 
-### Overview (sorted by priority: high impact + small effort first)
-| # | Title | Location | Category | Impact (H/M/L) | Effort (S/M/L) | Status (open / fixed in this pass) |
+<for each "later" row: the migration plan in ordered steps, under a line "F-n plan:">
+
+## Tech debt
+<sorted by priority: high impact + small effort first. At most 15 rows; group the rest
+in one last row, e.g. "9 more Low items: missing type hints in `shop/legacy_api/`".>
+
+| ID | Problem (one line) | Location | Impact | Effort | Status |
+|---|---|---|---|---|---|
+| TD-1 | nightly stock sync hides API errors | `sync.py:88` | H | S | open |
 
 ### Details
-<one block per row above, same numbering. A one-line "Problem" cell is not enough:
-the reader must be able to understand and judge the item without opening the file.>
+<a block ONLY for High-impact items and items listed under Approve. For the others the row above is enough.>
 
 #### TD-1: <short title>
-- **Where:** `path/file.py:120-164`, function `sync_inventory` (plus other occurrences if grouped)
-- **What this code is for:** <one or two sentences on the role of this code in the system>
-- **What is wrong:** <the concrete problem, with a short snippet (3-10 lines) or the exact evidence, e.g. search result counts>
-- **Why it matters:** <the consequence: which bug it can cause, which change it makes hard, who hits it and how often>
-- **If left alone:** <what happens over time; say so if the answer is "nothing much">
-- **Suggested fix:** <concrete steps, not "refactor this">, effort S/M/L, anything that must be done first (e.g. add tests)
-
-## Proposed action plan (for your review)
-<every item that is recommended but NOT done: SOLID recommendations, "optimize later" moves,
-tech debt items with Status "open". One numbered row each, so the user can approve by number.
-Write "None" if nothing is left.>
-
-| # | Action | What changes for you (behaviour) | Source (TD-n / SOLID / structure) | Files touched | Effort | Risk | Needs first | Status |
-|---|---|---|---|---|---|---|---|---|
-
-Reply with the numbers to approve (for example "approve 1, 3, 4"), "approve all", or "skip 2". Nothing in this table is done until you approve it.
+- **Where:** `path/file.py:120-164`, function `sync_inventory`, and what that code is for in one sentence
+- **What is wrong:** <the concrete problem, with a short snippet (3-10 lines) or the exact evidence>
+- **Why it matters:** <which bug it can cause or which change it makes hard, and what happens if it is left alone>
+- **Fix:** <concrete steps, not "refactor this">
 
 ## Action rounds
-<one short entry per action round: what was approved, what was done or skipped, verification. "None yet" before the first round.>
+<added after the first round. One short entry per round: IDs approved, done (with commit) or
+skipped, decisions and answers received, verification result.>
 
 ## Commits
-<list of commits on branch>
-
-## Open questions
-<always the LAST section. Everything you did not understand or could not decide during the pass.
-Write "None" if there are none.>
-
-1. **<the question, answerable in a sentence>**
-   - Context: <where it came up: file, finding, or phase, and what you saw>
-   - What I assumed / did meanwhile: <the safe default you took, e.g. "left the code untouched">
-   - What changes depending on your answer: <option A → ..., option B → ...>
+<`hash` subject, oldest first>
 ````
 
 Rules for the report:
 
 - **The tree shows the real end state.** Build it from `git diff --stat --name-status <base>...HEAD` plus the actual tree, not from memory. Every [NEW], [SPLIT], [MOVED] and [DELETED] entry must correspond to a real change on the branch, and every such change must appear in the tree.
-- **Tech debt details carry the context.** If you cannot fill in "What this code is for" or "Why it matters", you do not understand the item well enough yet: read more, or move it to Open questions.
-- **Open questions come last and are never guessed away.** See the open-questions section below. Nothing may follow the Open questions section, ever: when you add a section later (an action round, a note), insert it above Open questions.
-- **Save the report to a file as well as showing it:** create it with `scripts/report.py init` (`.maintenance/maintenance-report-<YYYY-MM-DD>.md`, with `.maintenance/` excluded from git), fill each section with `report.py set-section`, run `report.py check` before showing it, and tell the user the path.
-- **Always update the newest report in place.** Before writing, check `.maintenance/` for existing reports. If one exists for the current branch, edit the newest one; never start a second report for the same pass and never append updates to the end of the file. After every action round or answered question, rewrite the affected sections so they show the current state: statuses in the action plan and the tech debt overview, the folder tree, Verification, Commits, and a short entry under "Action rounds" (placed after "Proposed action plan", before "Commits"). Move answered questions to an "Answered" list at the top of Open questions, with the answer and what was done; keep unanswered and new questions below it.
-- **Lead with behaviour, for every row the user decides on** (Needs your decision, Proposed action plan). Say what the user will notice in the app: what happens today and what changes after the choice. Write "Nothing in the app" when nothing visible changes, and say what the change is for instead. Technical detail comes after. A reader who doesn't follow the code must still be able to decide.
-- **End with the action plan.** The report always closes the review stage with the "Proposed action plan" table, so the user can verify it and move to action (next section).
+- **Point at the code.** Every item carries `path/file.py:line` and, once changed, the commit hash, so the developer can jump straight to it.
+- **Mention app behaviour only when it changes.** Most maintenance changes nothing the user can see; do not add a "nothing changes" note to every row. When an action or decision *does* change visible behaviour, say so first in that row.
+- **Tech debt details carry the context.** If you cannot say what the code is for or why the problem matters, you do not understand the item well enough yet: read more, or make it a `Q-n`.
+- **Questions are never guessed away.** See "Open questions" below. They live under Needs your reply → Answer, so the user sees them on the first screen.
+- **Save the report to a file:** create it with `scripts/report.py init` (`.maintenance/maintenance-report-<YYYY-MM-DD>.md`, with `.maintenance/` excluded from git), fill each section with `report.py set-section`, and run `report.py check` until it prints `layout ok`. To drop an optional section, `set-section` it with an empty body.
+- **In the chat, show only Summary and Needs your reply,** then the path of the full report. Do not paste the whole file.
+- **Always update the newest report in place.** Before writing, check `.maintenance/` for existing reports. If one exists for the current branch, edit the newest one; never start a second report for the same pass and never append updates to the end of the file. After every action round or reply, rewrite the affected sections so they show the current state: the Summary counts, the folder tree, Verification, Commits, statuses in Tech debt, and an entry under Action rounds.
+- **Needs your reply holds only what is still open.** When an item is decided, approved and done, or answered, remove it from Needs your reply and record the outcome under Action rounds. Rows the user skipped stay.
 
 ## Review gate: from plan to action
 
-The pass has two stages. **Stage 1 (review)** is everything above: it changes only what is safe and clear (dead code, whitelist, small covered refactors) and ends with the report and the **Proposed action plan**. **Stage 2 (action)** starts only when the user verifies the plan.
+The pass has two stages. **Stage 1 (review)** is everything above: it changes only what is safe and clear (dead code, whitelist, small covered refactors) and ends with the report, whose **Needs your reply → Approve** table is the proposed plan. **Stage 2 (action)** starts only when the user approves items from it.
 
-- **What counts as verification.** An explicit message from the user approving items ("approve 1 and 3", "verified, go ahead", "approve all", "do the later items"). Silence, a thumbs-up on the report, or "looks good" about the report as a whole is not approval of the risky items: ask which numbers. Approval covers only the numbers named; it does not carry over to later passes.
-- **Execute only approved rows, in the plan's order,** respecting each row's "Needs first" (for example add tests before splitting a function). One commit per row, `refactor: ...` / `refactor(structure): ...` / `test: ...`, with Phase 2 verification before each commit. If verification fails, revert that row, say why, and continue with the next approved row only if it does not depend on the failed one.
+- **What counts as verification.** An explicit message from the user approving items ("approve S-2 and TD-1", "approve all", "do the F items"). Silence, a thumbs-up on the report, or "looks good" about the report as a whole is not approval of the risky items: ask which IDs. Approval covers only the IDs named; it does not carry over to later passes.
+- **Execute only approved rows, in the table's order,** respecting each row's "Needs first" (for example add tests before splitting a function). One commit per row, `refactor: ...` / `refactor(structure): ...` / `test: ...`, with Phase 2 verification before each commit. If verification fails, revert that row, say why, and continue with the next approved row only if it does not depend on the failed one.
 - **Stay inside the approved scope.** If an approved action reveals new debt or needs a wider change (public API, other modules, an unexpected test dependency), stop that row, log it, and ask; do not widen the change on your own.
 - **Structure moves** (an approved "optimize later" item) follow the Phase 5 rules for "optimize now": `git mv` without content edits, update every reference, one structural change per commit, shim for externally imported paths. Before moving, re-check `git branch -r` and tell the user which branches will conflict.
-- **After the action round:** re-run Vulture and the full checks, update the newest report file in place (statuses in the action plan and Tech debt overview, the folder tree, Verification, Commits, an "Action rounds" entry, and Open questions still last), then show a short summary of what was done, what failed or was skipped, and what is still open. Rows the user skipped stay in the plan as open.
+- **After the action round:** re-run Vulture and the full checks, update the newest report file in place (Summary counts, the folder tree, Verification, Commits, Tech debt statuses, an Action rounds entry, and done items removed from Needs your reply), run `report.py check`, then show a short summary of what was done, what failed or was skipped, and what is still open. Rows the user skipped stay under Approve.
 - **Never push, open a PR or merge** as part of action unless the user asked for that separately.
 
 ## Open questions (collect through every phase)
 
 Whenever you hit something you do not understand or cannot decide from the code alone, do not guess and do not silently skip it. Take the safe default (normally: leave the code as it is), add the question to a running list next to the tech debt log, and carry on. Typical cases: a function that looks unused but has a name suggesting external callers; business rules whose intent is unclear; two conflicting conventions with no way to tell which is the intended one; whether modules are imported by other repositories; whether a failing baseline test is known.
 
-Stop and ask immediately only when the answer blocks the whole pass (for example a dirty git tree, or no way to run the tests). Everything else goes to the **Open questions** section at the very end of the report, each with its context, the assumption you worked under, and what would change depending on the answer, so the user can answer all of them in one reply.
+Stop and ask immediately only when the answer blocks the whole pass (for example a dirty git tree, or no way to run the tests). Everything else becomes a `Q-n` item under **Needs your reply → Answer** in the report, each with where it came up, the assumption you worked under, and what would change depending on the answer, so the user can answer all of them in one reply.
 
 If the user asked only for part of this (for example "just find dead code, don't delete"), run only the relevant phases, but still do Phase 0, still verify after any change you make, and still keep the tech debt log, since it costs almost nothing while you are already reading the code.
