@@ -236,7 +236,8 @@ Legend: [NEW] created · [SPLIT] created by splitting a larger file · [MOVED] s
 | Item | Why it is actually used |
 
 ## Needs your decision (uncertain / test-only)
-| Item | Why it is uncertain | Suggested action |
+| # | Item | What it does, in app terms | What the user sees today | Choices and what each changes |
+<number rows D1, D2, ... so the user can answer by number ("D3 keep, D4 yes")>
 
 ## Verification
 | Check | Baseline | After |
@@ -278,8 +279,8 @@ the reader must be able to understand and judge the item without opening the fil
 tech debt items with Status "open". One numbered row each, so the user can approve by number.
 Write "None" if nothing is left.>
 
-| # | Action | Source (TD-n / SOLID / structure) | Files touched | Effort | Risk | Needs first |
-|---|---|---|---|---|---|---|
+| # | Action | What changes for you (behaviour) | Source (TD-n / SOLID / structure) | Files touched | Effort | Risk | Needs first | Status |
+|---|---|---|---|---|---|---|---|---|
 
 Reply with the numbers to approve (for example "approve 1, 3, 4"), "approve all", or "skip 2". Nothing in this table is done until you approve it.
 
@@ -306,6 +307,7 @@ Rules for the report:
 - **Open questions come last and are never guessed away.** See the open-questions section below. Nothing may follow the Open questions section, ever: when you add a section later (an action round, a note), insert it above Open questions.
 - **Save the report to a file as well as showing it:** create it with `scripts/report.py init` (`.maintenance/maintenance-report-<YYYY-MM-DD>.md`, with `.maintenance/` excluded from git), fill each section with `report.py set-section`, run `report.py check` before showing it, and tell the user the path.
 - **Always update the newest report in place.** Before writing, check `.maintenance/` for existing reports. If one exists for the current branch, edit the newest one; never start a second report for the same pass and never append updates to the end of the file. After every action round or answered question, rewrite the affected sections so they show the current state: statuses in the action plan and the tech debt overview, the folder tree, Verification, Commits, and a short entry under "Action rounds" (placed after "Proposed action plan", before "Commits"). Move answered questions to an "Answered" list at the top of Open questions, with the answer and what was done; keep unanswered and new questions below it.
+- **Lead with behaviour, for every row the user decides on** (Needs your decision, Proposed action plan). Say what the user will notice in the app: what happens today and what changes after the choice. Write "Nothing in the app" when nothing visible changes, and say what the change is for instead. Technical detail comes after. A reader who doesn't follow the code must still be able to decide.
 - **End with the action plan.** The report always closes the review stage with the "Proposed action plan" table, so the user can verify it and move to action (next section).
 
 ## Review gate: from plan to action

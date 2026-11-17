@@ -62,6 +62,7 @@ def record_discounted_revenue(orders: list[Order], ledger: Ledger) -> Decimal:
 - Type hints on every function signature; they are part of the meaning.
 - Comments explain why (a business rule, a trade-off, a workaround), never what. If a comment is needed to explain what the code does, rename or extract instead.
 - No commented-out code; git history keeps it.
+- No references to planning docs in code. `docs/` (plans, stories, acceptance criteria) is not shipped to production, so comments, docstrings, TODOs, test names and messages never mention AC/SEC/group numbers (`AC4`, `SEC2`, `G1`), ticket ids (`PCD-1`, `NB-3`), plan sections (`§3.3`) or plan paths (`docs/plans/...`). Write the intent instead: `# a re-save keeps the same card`, not `# (AC4)`.
 
 ## 2. Follow SOLID
 

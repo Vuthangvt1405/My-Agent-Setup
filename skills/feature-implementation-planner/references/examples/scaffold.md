@@ -66,20 +66,20 @@ public OrderPricingResponse removeCoupon(
 ```java
 @Transactional
 public OrderPricingResponse applyCoupon(UUID customerId, String orderId, String rawCode) {
-    // TODO(AC6, SEC2, S2): load order by publicId AND customerId; same 404 for missing and foreign
-    // TODO(AC5, G3): reject non-PENDING orders — 409 ORDER_NOT_EDITABLE
-    // TODO(AC1, G1): normalize code (trim + uppercase), look up coupon — 422 COUPON_NOT_FOUND
-    // TODO(AC2, AC3, G1, G2): CouponValidator.validate(coupon, order)
-    // TODO(AC7, G4): discount = min(calculated, subtotal), HALF_UP, scale 2
-    // TODO(AC4, G5): replace any existing coupon
-    // TODO(SEC7, G6): save with optimistic lock — 409 on stale version
-    // TODO(SEC8, S6): audit log COUPON_APPLIED (never log the token)
+    // TODO: load order by publicId AND customerId; same 404 for missing and foreign
+    // TODO: reject non-PENDING orders — 409 ORDER_NOT_EDITABLE
+    // TODO: normalize code (trim + uppercase), look up coupon — 422 COUPON_NOT_FOUND
+    // TODO: CouponValidator.validate(coupon, order)
+    // TODO: discount = min(calculated, subtotal), HALF_UP, scale 2
+    // TODO: replace any existing coupon
+    // TODO: save with optimistic lock — 409 on stale version
+    // TODO: audit log COUPON_APPLIED (never log the token)
     throw new UnsupportedOperationException("TODO: applyCoupon not implemented");
 }
 
 @Transactional
 public OrderPricingResponse removeCoupon(UUID customerId, String orderId) {
-    // TODO(US2, G5): ownership + PENDING check, clear coupon, discount = 0, audit log
+    // TODO: ownership + PENDING check, clear coupon, discount = 0, audit log
     throw new UnsupportedOperationException("TODO: removeCoupon not implemented");
 }
 ```
@@ -87,7 +87,7 @@ public OrderPricingResponse removeCoupon(UUID customerId, String orderId) {
 **ApplyCouponServiceTest.java**: every planned test, failing on purpose.
 ```java
 @Nested
-@DisplayName("Group 1 — Coupon must be valid (AC1, AC2)")
+@DisplayName("Coupon must be valid")
 class CouponValidity {
 
     @BeforeEach

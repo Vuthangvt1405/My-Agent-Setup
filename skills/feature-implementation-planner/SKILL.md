@@ -35,6 +35,16 @@ Keep a status line under the title and update it at each stage: `Status: Draft �
 
 ---
 
+## 🚫 No plan or ticket references in code
+
+The code ships to production; `docs/` (plans, stories, ACs, scaffold reports) does not. A reference the reader can't open is noise, and it goes stale when the plan changes. So in every file this skill creates or edits (source, tests, migrations, configs):
+- **Never** write AC / SEC / G / S / D / A numbers, ticket or story ids (`PCD-1`, `NB-3`, `US-4`), plan section numbers (`§3.3`), plan file paths (`docs/plans/...`), or words like "the plan" / "the story" in comments, docstrings, TODOs, test names, `@DisplayName`s, or log/error messages.
+- **Do** write the intent: what the code is for and why (the business rule, the trade-off). E.g. `# a re-save keeps the same card` instead of `# (AC4)`.
+- The trace from code to plan lives **only in the scaffold report's TODO map** (file:line → AC / SEC / test group), which stays in `docs/`.
+- Before reporting any step done, check your diff: `git diff | grep -nE '\b(AC|SEC)[0-9]+|\b[A-Z]{2,5}-[0-9]+\b|§[0-9]|docs/(plans|tasks|requirements)'` must find nothing in the lines you added.
+
+---
+
 ## ⛔ Plan mode: read-only, no changes (Steps 1–8)
 
 Steps 1–8 run in **plan mode**. Its only output is the plan file (see "Plan file" above). The reason: the user wants to review and correct the design before anything is touched, and a half-applied change is harder to review than a plan.
