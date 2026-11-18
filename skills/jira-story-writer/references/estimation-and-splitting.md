@@ -2,6 +2,8 @@
 
 Each story should be **INVEST**: Independent, Negotiable, Valuable, Estimable, Small (doable in one sprint, ideally 1–5 days), Testable.
 
+Only items marked 🟡 Partial, 🔄 Conflicts, ❌ Not implemented or unverified in Step 1b become stories. Items marked ✅ Implemented or 📋 Already planned get no new story.
+
 If the requirement is bigger than one story, create an **Epic** and split it into stories. Good ways to split:
 - **By actor**: customer applies a coupon / admin creates coupons.
 - **By workflow step**: create → apply → remove → report.
@@ -28,6 +30,8 @@ Estimate every candidate story with the Fibonacci scale. Points measure **size a
 | 3 | Small–medium: a few rules, well understood |
 | 5 | Medium: **the maximum for one story**, several rules/states, some unknowns |
 | 8+ | **Too big: must be split** |
+
+**Estimate the delta, not the whole feature.** Existing code usually lowers Effort. Changing existing behaviour raises Uncertainty, because other features may depend on it and need regression testing. Reflect both in the factors.
 
 **The rule: keep every story as small as possible, aim for 1–3 points, and break anything estimated above 5 points into smaller stories.** One observable behaviour per ticket: if a story covers "do X" and "show the error when X fails", those are two tickets. The reason: a big story rarely fits in one sprint, hides too many unknowns to estimate honestly, and is hard to review and test as one unit.
 

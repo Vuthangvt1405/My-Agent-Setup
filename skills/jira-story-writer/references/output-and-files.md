@@ -12,6 +12,8 @@ Silently check every story against this list and fix any problems before showing
 - [ ] Out of Scope and Open Questions are filled
 - [ ] No Open Question is technical (models, APIs, timeouts, counts, formats); those are dev decisions in Developer Notes
 - [ ] Every story is estimated, with its Complexity/Uncertainty/Effort reason
+- [ ] If code was reachable, every requirement item has a status with evidence, and no story re-builds something already implemented or duplicates an open ticket
+- [ ] Stories that touch existing code have a Current Behaviour section and regression ACs
 - [ ] **No story is above 5 points**; anything bigger was split and re-estimated, and 5s are marked "at the limit"
 - [ ] Every story has its own ticket id and is in its own file `docs/tasks/<epic-slug>/backlog/<TICKET-ID>-<slug>.md`, with `# <TICKET-ID> — <Summary>` as the first line
 - [ ] The chat response stays concise; full ACs and dev notes live in the files
@@ -50,7 +52,7 @@ docs/
 
 1. **Requirements PRD (`docs/requirements/<epic-slug>/README.md`)**:
    - Acts as the Product Requirement Document (PRD) for the Epic.
-   - Contains: Epic Summary, Suggested Total Points, Requirement Analysis table, Estimation Log, and links to all User Stories in `docs/tasks/<epic-slug>/`.
+   - Contains: Epic Summary, Suggested Total Points, Requirement Analysis table, Implementation Check table (with "Already implemented, no ticket needed"), Estimation Log, and links to all User Stories in `docs/tasks/<epic-slug>/`.
 2. **Ready-to-Do User Stories (`docs/tasks/<epic-slug>/`)**:
    - Developers only care about the **User Stories they need to do right now**! Put the sprint-ready user story files directly in this folder.
    - `README.md`: backlog index table listing every ticket id (linked to its file), summary, points, dependencies, and status (`Backlog`, `Ready`, `In Progress`, `Done`).
@@ -75,6 +77,9 @@ As the **Product Owner (PO)**, keep your chat response concise, professional, an
 
 ## Requirement Analysis
 (Table from Step 1: actors, goals, value, rules, data, ambiguities)
+
+## Implementation Check
+(Table from Step 1b with evidence and search coverage, plus what is already implemented or planned. If no code was reachable, say "Not checked: no codebase available")
 
 ## Estimation Log
 (Table from Step 2, showing every split)

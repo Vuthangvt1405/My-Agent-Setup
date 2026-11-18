@@ -16,6 +16,9 @@ As a **[specific role]**, I want **[capability]**, so that **[business value]**.
 ### Background
 [2–4 sentences: why this exists now, the business context, and what users do today without it]
 
+### Current Behaviour
+[Only when Step 1b ran: what the system does today for this story, with file references, and what is missing or must change. Write "Not implemented today" for new work.]
+
 ### Acceptance Criteria
 **AC1 — [short name]**
 Given [precondition]
@@ -55,6 +58,7 @@ Then [observable, measurable result]
 | Errors shown to the user | What message does the user see? Does the data stay unchanged? |
 | Boundaries | Exactly at the limit vs just past it |
 | Non-functional | Performance, audit, accessibility, mobile, only when they matter for this story |
+| Regression | If the story changes existing code (🟡 / 🔄), what must keep working? Write one AC per existing behaviour at risk |
 
 - **Make it testable.** Replace vague words with measurable ones:
 
@@ -82,7 +86,7 @@ These help a developer start quickly. Include only the items that are relevant, 
 - **Related tickets / docs / designs**: links if the user provided them. Never invent links or ticket keys; use placeholders like `[link to Figma]`.
 - **Testing hints**: test data needed, how QA can reproduce.
 
-If no codebase or system info was given, label technical hints as *(assumption: verify against the codebase)*.
+If Step 1b checked the code, name the real files, functions and endpoints it found as affected areas, and say what to **reuse** and what to **change**. If no codebase or system info was given, label technical hints as *(assumption: verify against the codebase)*.
 
 ### Other fields
 - **Out of Scope**: always fill it. It prevents scope creep and answers "what about X?" before anyone asks.
