@@ -4,7 +4,7 @@ The plan file uses these exact headings so it is easy to scan:
 
 ```
 # Feature Plan: [Feature name]
-Status: Draft — awaiting answers · Source: [link to story/ticket] · Date: YYYY-MM-DD
+Status: Draft — awaiting answers · v1 · Source: [link to story/ticket] · Date: YYYY-MM-DD
 ## 1. Requirement (User Stories & Acceptance Criteria)
 ## 2. Codebase Patterns
 ## 3. Schema & Relationships
@@ -21,7 +21,7 @@ Status: Draft — awaiting answers · Source: [link to story/ticket] · Date: YY
 ### Functional groups
 ### Security groups
 ## 8. Questions & Confirmations
-## Decision log            (added once the user answers)
+## Decision log            (added once the user answers: | D# | Question | Answer | What changed in the plan |)
 ## 9–10. Scaffold report & verification   (link to <ID>-scaffold-report.md, added after the scaffold)
 ```
 

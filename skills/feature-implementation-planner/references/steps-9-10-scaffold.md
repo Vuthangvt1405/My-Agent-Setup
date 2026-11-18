@@ -3,7 +3,7 @@
 The scaffold creates the **shape** of the feature, with no behavior yet. This lets the user review structure, names, and wiring in real code before any logic exists, and it gives TDD a ready place to start: the tests exist and fail, and the next step is making them pass one by one.
 
 ### What the scaffold includes
-Create exactly the files listed in "Files affected" (Step 4.1), and nothing else:
+Re-read the plan file from disk first, and build from **its latest version** (with every Decision log change applied), not from the plan as it first appeared in the chat. Create exactly the files listed in "Files affected" (Step 4.1), and nothing else:
 
 | Part | Include | Leave out (TODO) |
 |---|---|---|
@@ -75,6 +75,6 @@ or tell me what to change in the scaffold.
 
 ### 10c. Stop and wait
 - End the response here. **Do not write any logic in this response**, even if everything passed.
-- If the user asks for changes, apply only scaffold-level changes, re-run 10a, show the updated results, and ask again. Repeat until they reply with an explicit "verified" / "approved" / "go ahead".
+- If the user asks for changes, first run the **Plan update procedure** (`step-8-questions.md`) on the plan file, so the plan stays the source of truth. Then apply only the matching scaffold-level changes, re-run 10a, show the updated results with the sync table, and ask again. Repeat until they reply with an explicit "verified" / "approved" / "go ahead".
 - Silence, "looks ok?", or questions are not verification. Answer them, then ask again.
 - Only after explicit verification may logic implementation start, one test at a time (Red → Green → Refactor), beginning with the suggested first test.
