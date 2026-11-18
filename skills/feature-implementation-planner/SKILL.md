@@ -25,11 +25,14 @@ All output of this skill is written to **one Markdown plan file**, so the user c
 | When | Written to the plan file |
 |---|---|
 | End of Step 8 | The full plan, Steps 1–8, using the headings in [references/plan-template.md](references/plan-template.md) |
-| User answers questions | The plan updated in place, plus a row per decision in `## Decision log` |
+| User answers questions (every round) | The **Plan update procedure** in [step-8-questions.md](references/step-8-questions.md): every affected section edited in place, a row per decision in `## Decision log`, then the file re-read and checked before asking for approval |
+| User asks for a change at Step 10 | The same procedure, on the plan file first, then the scaffold |
 | Step 9 done | A **separate scaffold report file** `<ID>-scaffold-report.md`, next to the plan, with `## 9. Scaffold report`; the plan gets a `## 9–10. Scaffold report & verification` section that only links to it |
 | Step 10 done | `## 10. Verification` appended to the scaffold report file (self-check table + user checklist); the status line updated in both files |
 
-Keep a status line under the title and update it at each stage: `Status: Draft — awaiting answers` → `Approved — scaffold pending` → `Scaffolded — awaiting verification` → `Verified — implementing`.
+**The plan file is the source of truth.** If the file and the chat disagree, the file is wrong; fix it before anything else. Write each change to the file in the same reply that decides it (never "I'll update the plan later"), and re-read the file from disk before each gate (approval, scaffold, verification).
+
+Keep a status line under the title, with a version `vN` that goes up on every update, and update it at each stage: `Status: Draft — awaiting answers` → `Approved — scaffold pending` → `Scaffolded — awaiting verification` → `Verified — implementing`.
 
 **What goes in the chat reply:** a clickable link to the plan file, a 3–5 line summary (approach, files affected count, test count, schema change yes/no), and the Step 8 questions copied as a numbered list so the user can answer without opening the file. Don't paste the whole plan into the chat.
 
